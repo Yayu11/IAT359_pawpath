@@ -17,4 +17,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  titleText: {
+    marginTop: 20,
+    textAlign: "center",
+    fontWeight: "bold",
+    fontSize: 24,
+    color: "#2C3E50", // Darker blue shade
+    marginBottom: 10,
+  },
 });
