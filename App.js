@@ -57,7 +57,13 @@ function ProtectedLayout() {
             iconName = "paw-outline";
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return (
+            <Ionicons
+              name={iconName}
+              size={route.name === "Add" ? 42 : size}
+              color={color}
+            />
+          );
         },
       })}
     >
@@ -66,7 +72,7 @@ function ProtectedLayout() {
       <Tab.Screen
         name="Add"
         component={PlaceholderScreen}
-        options={{ tabBarLabel: "" }}
+        options={{ tabBarLabel: "", tabBarIconStyle: styles.addTabIcon }}
       />
       <Tab.Screen name="Calendar" component={PlaceholderScreen} />
       <Tab.Screen name="Profile" component={PlaceholderScreen} />
@@ -166,5 +172,11 @@ const styles = StyleSheet.create({
   tabBarLabel: {
     fontFamily: "PawPath-Regular",
     fontSize: 11,
+  },
+  addTabIcon: {
+    // marginTop: 5,
+    alignItems: "center",
+    height: 40,
+    width: 40,
   },
 });
