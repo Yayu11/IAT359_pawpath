@@ -66,7 +66,7 @@ export default function LogInScreen({ navigation }) {
           {/* <Text style={styles.logo}> LOGO </Text> */}
           <Image
             source={require("../../assets/img/PawPath-Logo icon.png")}
-            styles={styles.logoImg}
+            style={styles.logoImg}
             resizeMode="contain"
             accessibilityLabel="PawPath Logo"
           />

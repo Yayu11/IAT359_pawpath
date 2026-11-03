@@ -80,7 +80,7 @@ export default function SignUpScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={styles.content}
@@ -91,7 +91,7 @@ export default function SignUpScreen({ navigation }) {
           {/* <Text style={styles.logoImg}>LOGO_IMG</Text> */}
           <Image
             source={require("../../assets/img/PawPath-Logo icon.png")}
-            styles={styles.logoImg}
+            style={styles.logoImg}
             resizeMode="contain"
             accessibilityLabel="PawPath Logo"
           />
