@@ -98,6 +98,12 @@ export default function App() {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    if ((fontsLoaded || fontError) && !loading) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError, loading]);
+
   // Wait for fonts and Firebase
   if (!fontsLoaded && !fontError) {
     return (
