@@ -16,6 +16,8 @@ import { firebase_auth } from "./src/firebaseConfig";
 import LogInScreen from "./src/screens/LogInScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+import ProfileScreen from "./src/screens/ProfileScreen";
+import PetFormScreen from "./src/screens/PetFormScreen";
 
 //Initialize navigators
 const Stack = createNativeStackNavigator();
@@ -75,7 +77,7 @@ function ProtectedLayout() {
         options={{ tabBarLabel: "", tabBarIconStyle: styles.addTabIcon }}
       />
       <Tab.Screen name="Calendar" component={PlaceholderScreen} />
-      <Tab.Screen name="Profile" component={PlaceholderScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 }
@@ -140,7 +142,10 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {user ? (
-          <Stack.Screen name="ProtectedArea" component={ProtectedLayout} />
+          <>
+            <Stack.Screen name="ProtectedArea" component={ProtectedLayout} />
+            <Stack.Screen name="PetForm" component={PetFormScreen} />
+          </>
         ) : (
           <>
             <Stack.Screen name="LogIn" component={LogInScreen} />
