@@ -16,7 +16,7 @@ import { firebase_auth } from "./src/firebaseConfig";
 import LogInScreen from "./src/screens/LogInScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import HomeScreen from "./src/screens/HomeScreen";
-// import CalendarStack from "./src/navigation/CalendarStack";
+import CalendarStack from "./src/navigation/CalendarStack";
 import ProfileStack from "./src/navigation/ProfileStack";
 
 //Initialize navigators
@@ -79,7 +79,7 @@ function ProtectedLayout() {
           tabBarIconStyle: styles.addTabIcon,
         }}
       />
-      <Tab.Screen name="Calendar" component={PlaceholderScreen} />
+      <Tab.Screen name="Calendar" component={CalendarStack} />
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
