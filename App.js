@@ -7,26 +7,30 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View, Text, StyleSheet } from "react-native";
 
-//fonts
+// Fonts
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 
-//screens
+// Firebase
 import { firebase_auth } from "./src/firebaseConfig";
+
+// Screens
 import LogInScreen from "./src/screens/LogInScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+
+// Navigation
 import CalendarStack from "./src/navigation/CalendarStack";
 import ProfileStack from "./src/navigation/ProfileStack";
 
-//Initialize navigators
+// Initialize navigators
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Keep splash screen visible while fonts load
+// Keep splash screen visible while loading
 SplashScreen.preventAutoHideAsync();
 
-//Temporary placeholder for other tabs
+// Temporary placeholder for other tabs
 function PlaceholderScreen({ route }) {
   return (
     <View style={styles.container}>
@@ -36,6 +40,7 @@ function PlaceholderScreen({ route }) {
   );
 }
 
+// Bottom Tab Navigation
 function ProtectedLayout() {
   return (
     <Tab.Navigator
@@ -44,6 +49,7 @@ function ProtectedLayout() {
         tabBarActiveTintColor: "#8F9E42",
         tabBarInactiveTintColor: "#3F3F3F",
         tabBarStyle: styles.tabBar,
+
         tabBarIcon: ({ color, size }) => {
           let iconName;
 
@@ -70,7 +76,9 @@ function ProtectedLayout() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
+
       <Tab.Screen name="Map" component={PlaceholderScreen} />
+
       <Tab.Screen
         name="Add"
         component={PlaceholderScreen}
@@ -79,17 +87,19 @@ function ProtectedLayout() {
           tabBarIconStyle: styles.addTabIcon,
         }}
       />
+
       <Tab.Screen name="Calendar" component={CalendarStack} />
+
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
   );
 }
 
 export default function App() {
-  //state to store authenticated user
+  // Store authenticated user
   const [user, setUser] = useState(null);
 
-  //check whether Firebase has finished Loading
+  // Check Firebase loading
   const [loading, setLoading] = useState(true);
 
   // Load custom fonts
@@ -100,22 +110,24 @@ export default function App() {
     "PawPath-Medium": require("./assets/fonts/Poppins-Medium.ttf"),
   });
 
-  //Listern for authentication state changes
+  // Listen for authentication changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebase_auth, (currentUser) => {
       setUser(currentUser);
       setLoading(false);
     });
+
     return unsubscribe;
   }, []);
 
+  // Hide splash screen when ready
   useEffect(() => {
     if ((fontsLoaded || fontError) && !loading) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError, loading]);
 
-  // Wait for fonts and Firebase
+  // Wait for fonts
   if (!fontsLoaded && !fontError) {
     return (
       <View style={styles.container}>
@@ -132,7 +144,7 @@ export default function App() {
     );
   }
 
-  //Display Loading indicator while checking authentication
+  // Wait for Firebase
   if (loading) {
     return (
       <View style={styles.container}>
@@ -149,6 +161,7 @@ export default function App() {
         ) : (
           <>
             <Stack.Screen name="LogIn" component={LogInScreen} />
+
             <Stack.Screen name="SignUp" component={SignUpScreen} />
           </>
         )}
@@ -164,23 +177,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+
   title: {
     fontSize: 24,
     fontFamily: "PawPath-Bold",
     marginBottom: 15,
   },
+
   tabBar: {
     backgroundColor: "#FAF9F6",
     paddingTop: 5,
     paddingBottom: 8,
-    // height: 95,
   },
+
   tabBarLabel: {
     fontFamily: "PawPath-Regular",
     fontSize: 11,
   },
+
   addTabIcon: {
-    // marginTop: 5,
     alignItems: "center",
     height: 40,
     width: 40,

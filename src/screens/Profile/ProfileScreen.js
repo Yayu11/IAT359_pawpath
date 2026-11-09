@@ -55,7 +55,7 @@ export default function ProfileScreen({ navigation }) {
     }, [loadProfile]),
   );
 
-  // Change the user's profile photo
+  // Change user's profile photo
   async function handleChangePhoto() {
     if (!user) return;
 
@@ -82,9 +82,28 @@ export default function ProfileScreen({ navigation }) {
       navigation.navigate("PetForm", {
         petId: pets[0].id,
       });
-    } else {
-      Alert.alert("Edit Pet", "Tap the pet profile you want to edit.");
+    } else if (pets.length > 1) {
+      Alert.alert("Edit Pet", "Select a pet to edit.", [
+        ...pets.map((pet) => ({
+          text: pet.name,
+          onPress: () =>
+            navigation.navigate("PetForm", {
+              petId: pet.id,
+            }),
+        })),
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+      ]);
     }
+  }
+
+  // Navigate to Pet Detail screen
+  function openPetDetail(petId) {
+    navigation.navigate("PetDetail", {
+      petId: petId,
+    });
   }
 
   // Format birthday for display
@@ -96,9 +115,11 @@ export default function ProfileScreen({ navigation }) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* <Text style={styles.brand}>PawPath</Text> */}
-
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       {/* User profile */}
       <View style={styles.userRow}>
         <Pressable style={styles.avatarWrapper} onPress={handleChangePhoto}>
@@ -110,6 +131,7 @@ export default function ProfileScreen({ navigation }) {
             </View>
           )}
 
+          {/* Edit profile photo icon */}
           <Image
             source={require("../../../assets/img/edit_profile_icon.png")}
             style={styles.editIcon}
@@ -124,6 +146,7 @@ export default function ProfileScreen({ navigation }) {
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Your furry friends</Text>
 
+        {/* Add and Edit buttons */}
         {pets.length > 0 && (
           <View style={styles.actions}>
             <Pressable style={styles.smallButton} onPress={openAddPet}>
@@ -154,14 +177,15 @@ export default function ProfileScreen({ navigation }) {
           <Pressable
             key={pet.id}
             style={styles.petCard}
-            onPress={() =>
-              navigation.navigate("PetForm", {
-                petId: pet.id,
-              })
-            }
+            onPress={() => openPetDetail(pet.id)}
           >
+            {/* Pet profile photo */}
             {pet.photo_uri ? (
-              <Image source={{ uri: pet.photo_uri }} style={styles.petPhoto} />
+              <Image
+                source={{ uri: pet.photo_uri }}
+                style={styles.petPhoto}
+                resizeMode="cover"
+              />
             ) : (
               <View style={styles.petPhotoPlaceholder}>
                 <Image
@@ -172,6 +196,7 @@ export default function ProfileScreen({ navigation }) {
               </View>
             )}
 
+            {/* Pet information */}
             <View style={styles.petInfo}>
               <Text style={styles.petName}>{pet.name}</Text>
 
@@ -200,12 +225,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  brand: {
-    fontFamily: "PawPath-Bold",
-    fontSize: 13,
-    color: "#000",
-  },
-
+  // User profile
   userRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -249,6 +269,7 @@ const styles = StyleSheet.create({
     color: "#000",
   },
 
+  // Pet section header
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -279,6 +300,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 
+  // Empty pet card
   emptyPetCard: {
     backgroundColor: "#D4D88E",
     borderRadius: 6,
@@ -298,6 +320,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 
+  // Saved pet cards
   petCard: {
     backgroundColor: "#D4D88E",
     borderRadius: 20,
