@@ -1,26 +1,17 @@
 // import { signOut } from "firebase/auth";
 
-import { Alert, StyleSheet, Text, Image, View, Pressable } from "react-native";
+import { StyleSheet, Text, Image, View, Pressable } from "react-native";
 
-import { firebase_auth } from "../firebaseConfig";
+import { firebase_auth } from "../../firebaseConfig";
 
 export default function HomeScreen({ navigation }) {
   const user = firebase_auth.currentUser;
-
-  // async function handleSignOut() {
-  //   try {
-  //     await signOut(firebase_auth);
-  //   } catch (error) {
-  //     console.log(error.message);
-  //     Alert.alert("Sign Out Failed", error.message);
-  //   }
-  // }
 
   return (
     <View style={styles.container}>
       <Text style={styles.logoTitle}>Pawpath</Text>
 
-      <Text style={styles.title}>Hi, {user?.email} </Text>
+      <Text style={styles.title}>Hi, {user?.displayName || "User"} </Text>
 
       {/* plan for today */}
       <View style={styles.planContainer}>
@@ -37,7 +28,7 @@ export default function HomeScreen({ navigation }) {
           onPress={() => navigation.navigate("SelectPet")}
         >
           <Image
-            source={require("../../assets/img/dog_icon.png")}
+            source={require("../../../assets/img/dog_icon.png")}
             style={styles.logoImg}
             resizeMode="contain"
             accessibilityLabel="Walk Logo"
@@ -68,7 +59,7 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontFamily: "PawPath-Regular",
     marginTop: 20,
-    marginBottom: 80,
+    marginBottom: 20,
   },
 
   subtitle: {

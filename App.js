@@ -15,10 +15,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { firebase_auth } from "./src/firebaseConfig";
 import LogInScreen from "./src/screens/LogInScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
-import HomeScreen from "./src/screens/HomeScreen";
-import SelectPetScreen from "./src/screens/SelectPetScreen";
+import HomeScreen from "./src/screens/Home/HomeScreen";
 import CalendarStack from "./src/navigation/CalendarStack";
 import ProfileStack from "./src/navigation/ProfileStack";
+import HomeStack from "./src/navigation/HomeStack";
 
 //Initialize navigators
 const Stack = createNativeStackNavigator();
@@ -70,7 +70,7 @@ function ProtectedLayout() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeStack} />
       <Tab.Screen name="Map" component={PlaceholderScreen} />
       <Tab.Screen
         name="Add"
