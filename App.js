@@ -16,6 +16,7 @@ import { firebase_auth } from "./src/firebaseConfig";
 import LogInScreen from "./src/screens/LogInScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
 import HomeScreen from "./src/screens/HomeScreen";
+import SelectPetScreen from "./src/screens/SelectPetScreen";
 
 //Initialize navigators
 const Stack = createNativeStackNavigator();
@@ -89,7 +90,7 @@ export default function App() {
     "PawPath-Medium": require("./assets/fonts/Poppins-Medium.ttf"),
   });
 
-  //Listern for authentication state changes
+  //Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebase_auth, (currentUser) => {
       setUser(currentUser);
