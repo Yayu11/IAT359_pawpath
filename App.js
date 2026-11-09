@@ -22,6 +22,7 @@ import HomeScreen from "./src/screens/HomeScreen";
 // Navigation
 import CalendarStack from "./src/navigation/CalendarStack";
 import ProfileStack from "./src/navigation/ProfileStack";
+import MapStack from "./src/navigation/MapStack";
 
 // Initialize navigators
 const Stack = createNativeStackNavigator();
@@ -77,7 +78,7 @@ function ProtectedLayout() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
 
-      <Tab.Screen name="Map" component={PlaceholderScreen} />
+      <Tab.Screen name="Map" component={MapStack} />
 
       <Tab.Screen
         name="Add"
