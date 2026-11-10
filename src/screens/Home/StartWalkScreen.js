@@ -5,13 +5,13 @@ import Geocoder from "react-native-geocoding";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { useFocusEffect } from "@react-navigation/native";
 
-export default function SelectPetScreen({ navigation }) {
+export default function StartWalkScreen({ navigation }) {
   const apiKey = process.env.EXPO_PUBLIC_API_KEY;
   console.log(apiKey);
 
   // state management
   const [currentLocation, setCurrentLocation] = useState(null); // stores user's GPS coords
-
+  const [modalVisible, setModalVisible] = useState(true);
   // initialize Geocoder with Google Maps API Key
   Geocoder.init(apiKey);
 
@@ -62,7 +62,7 @@ export default function SelectPetScreen({ navigation }) {
       if (location) {
         setCurrentLocation(location);
         console.log(
-          `Current location: lat: ${currentLocationlocation.coords.latitude}, lng: ${currentLocation.coords.longitude}`,
+          `Current location: lat: ${location.coords.latitude}, lng: ${location.coords.longitude}`,
         );
       } else {
         console.log("Current location not obtained");
@@ -84,9 +84,14 @@ export default function SelectPetScreen({ navigation }) {
         showsMyLocationButton // enable the "Current Location" button
         showsUserLocation // show the blue dot for user's position
         // use Google Maps on Android on both Android and iOS
-        provider={PROVIDER_GOOGLE}
+        // provider={PROVIDER_GOOGLE}
       />
-      <Modal transparent={true} animationType="slide">
+      <Modal
+        visible={modalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setModalVisible(false)}
+      >
         <View style={styles.modalContainer}>
           {/* pull up tab */}
           <View style={styles.bottomSheet}>
@@ -106,7 +111,10 @@ export default function SelectPetScreen({ navigation }) {
               {/* End walk button */}
               <Pressable
                 style={styles.endWalkButton}
-                onPress={() => navigation.navigate("LogWalk")}
+                onPress={() => {
+                  setModalVisible(false);
+                  navigation.navigate("LogWalk");
+                }}
               >
                 <Text style={styles.finishText}>Finish Walk</Text>
               </Pressable>

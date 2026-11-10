@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, View, Pressable } from "react-native";
 
-export default function HomeScreen() {
+export default function LogWalkScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [distance, setDistance] = useState("");
   const [time, setTime] = useState("");
@@ -63,7 +63,7 @@ export default function HomeScreen() {
           </Pressable>
           <Pressable
             style={styles.discardButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigation.popToTop()}
           >
             <Text style={styles.buttonText}>Discard</Text>
           </Pressable>
