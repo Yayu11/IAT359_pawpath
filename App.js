@@ -17,11 +17,12 @@ import { firebase_auth } from "./src/firebaseConfig";
 // Screens
 import LogInScreen from "./src/screens/LogInScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
-import HomeScreen from "./src/screens/HomeScreen";
+import HomeScreen from "./src/screens/Home/HomeScreen";
 
 // Navigation
 import CalendarStack from "./src/navigation/CalendarStack";
 import ProfileStack from "./src/navigation/ProfileStack";
+import HomeStack from "./src/navigation/HomeStack";
 import MapStack from "./src/navigation/MapStack";
 
 // Initialize navigators
@@ -76,7 +77,7 @@ function ProtectedLayout() {
         },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeStack} />
 
       <Tab.Screen name="Map" component={MapStack} />
 
@@ -112,6 +113,7 @@ export default function App() {
   });
 
   // Listen for authentication changes
+  //Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(firebase_auth, (currentUser) => {
       setUser(currentUser);
