@@ -19,6 +19,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-font",
+      "expo-splash-screen",
+      "expo-sqlite",
+      "@react-native-community/datetimepicker"
+    ]
   }
 }

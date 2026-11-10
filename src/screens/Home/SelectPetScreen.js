@@ -93,7 +93,11 @@ export default function SelectPetScreen({ navigation }) {
             </Text>
           </Pressable>
           <Pressable
-            style={styles.startWalkButton}
+            style={[
+              styles.startWalkButton,
+              !selectedPet && styles.disabledButton,
+            ]}
+            disabled={!selectedPet}
             onPress={() => navigation.navigate("StartWalk")}
           >
             <Text style={styles.buttonText}>Start Walk</Text>
@@ -162,7 +166,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   selectedPetCard: {
-    backgroundColor: "#bbbf69",
+    backgroundColor: "#9ca145",
   },
   buttonContainer: {
     flex: 1,
@@ -185,5 +189,8 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 15,
     alignItems: "center",
+  },
+  disabledButton: {
+    backgroundColor: "#D3D3D3",
   },
 });
