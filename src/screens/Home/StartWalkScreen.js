@@ -5,7 +5,7 @@ import Geocoder from "react-native-geocoding";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { useFocusEffect } from "@react-navigation/native";
 
-export default function SelectPetScreen({ navigation }) {
+export default function StartWalkScreen({ navigation }) {
   const apiKey = process.env.EXPO_PUBLIC_API_KEY;
   console.log(apiKey);
 
@@ -83,37 +83,31 @@ export default function SelectPetScreen({ navigation }) {
         }}
         showsMyLocationButton // enable the "Current Location" button
         showsUserLocation // show the blue dot for user's position
-        // use Google Maps on Android on both Android and iOS
-        provider={PROVIDER_GOOGLE}
       />
-      <Modal transparent={true} animationType="slide">
-        <View style={styles.modalContainer}>
-          {/* pull up tab */}
-          <View style={styles.bottomSheet}>
-            <View style={styles.dragLine} />
-            <Text style={styles.popTitle}>Your Walk</Text>
+      <View style={styles.modalContainer}>
+        <View style={styles.bottomSheet}>
+          <Text style={styles.popTitle}>Your Walk</Text>
 
-            <View style={styles.timerInfo}>
-              <Text style={styles.timerLabel}>Walk Duration</Text>
-            </View>
+          <View style={styles.timerInfo}>
+            <Text style={styles.timerLabel}>Walk Duration</Text>
+          </View>
 
-            {/* Open camera button */}
-            <View style={styles.buttonRow}>
-              <Pressable style={styles.endWalkButton}>
-                <Text style={styles.finishText}>Open Camera</Text>
-              </Pressable>
+          {/* Open camera button */}
+          <View style={styles.buttonRow}>
+            <Pressable style={styles.endWalkButton}>
+              <Text style={styles.finishText}>Open Camera</Text>
+            </Pressable>
 
-              {/* End walk button */}
-              <Pressable
-                style={styles.endWalkButton}
-                onPress={() => navigation.navigate("LogWalk")}
-              >
-                <Text style={styles.finishText}>Finish Walk</Text>
-              </Pressable>
-            </View>
+            {/* End walk button */}
+            <Pressable
+              style={styles.endWalkButton}
+              onPress={() => navigation.navigate("LogWalk")}
+            >
+              <Text style={styles.finishText}>Finish Walk</Text>
+            </Pressable>
           </View>
         </View>
-      </Modal>
+      </View>
     </View>
   );
 }
@@ -121,7 +115,6 @@ export default function SelectPetScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 10,
   },
   map: {
     width: "100%",
@@ -134,8 +127,6 @@ const styles = StyleSheet.create({
 
   bottomSheet: {
     backgroundColor: "#FEFCFA",
-    borderTopLeftRadius: 25,
-    borderTopRightRadius: 25,
     padding: 25,
     paddingBottom: 40,
   },

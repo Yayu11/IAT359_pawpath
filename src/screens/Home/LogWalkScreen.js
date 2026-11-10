@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, View, Pressable } from "react-native";
 
-export default function HomeScreen() {
+export default function LogWalkScreen() {
   const [title, setTitle] = useState("");
   const [distance, setDistance] = useState("");
   const [time, setTime] = useState("");
