@@ -149,7 +149,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     flexDirection: "row",
     overflow: "hidden",
-    minHeight: 130,
     marginBottom: 14,
   },
   petPhoto: {
@@ -170,7 +169,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     flex: 1,
-    marginTop: 320,
+    marginTop: "50%",
     gap: 12,
   },
   buttonText: {

@@ -17,7 +17,7 @@ import { firebase_auth } from "./src/firebaseConfig";
 // Screens
 import LogInScreen from "./src/screens/LogInScreen";
 import SignUpScreen from "./src/screens/SignUpScreen";
-import HomeScreen from "./src/screens/Home/HomeScreen";
+import CreateWalkScreen from "./src/screens/CreateWalkScreen";
 
 // Navigation
 import CalendarStack from "./src/navigation/CalendarStack";
@@ -83,7 +83,7 @@ function ProtectedLayout() {
 
       <Tab.Screen
         name="Add"
-        component={PlaceholderScreen}
+        component={CreateWalkScreen}
         options={{
           tabBarLabel: "",
           tabBarIconStyle: styles.addTabIcon,

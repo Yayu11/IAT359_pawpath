@@ -4,6 +4,7 @@ import { Modal, StyleSheet, Text, View, Pressable } from "react-native";
 import Geocoder from "react-native-geocoding";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function StartWalkScreen({ navigation }) {
   const apiKey = process.env.EXPO_PUBLIC_API_KEY;
@@ -83,37 +84,33 @@ export default function StartWalkScreen({ navigation }) {
         }}
         showsMyLocationButton // enable the "Current Location" button
         showsUserLocation // show the blue dot for user's position
-        // use Google Maps on Android on both Android and iOS
-        provider={PROVIDER_GOOGLE}
       />
-      <Modal transparent={true} animationType="slide">
-        <View style={styles.modalContainer}>
-          {/* pull up tab */}
-          <View style={styles.bottomSheet}>
-            <View style={styles.dragLine} />
-            <Text style={styles.popTitle}>Your Walk</Text>
+      <View style={styles.modalContainer}>
+        <View style={styles.bottomSheet}>
+          <Text style={styles.popTitle}>Your Walk</Text>
 
-            <View style={styles.timerInfo}>
-              <Text style={styles.timerLabel}>Walk Duration</Text>
-            </View>
+          <View style={styles.timerInfo}>
+            <Text style={styles.timerLabel}>Walk Duration</Text>
+          </View>
 
-            {/* Open camera button */}
-            <View style={styles.buttonRow}>
-              <Pressable style={styles.endWalkButton}>
-                <Text style={styles.finishText}>Open Camera</Text>
-              </Pressable>
+          {/* Open camera button */}
+          <View style={styles.buttonRow}>
+            <Pressable style={styles.endWalkButton}>
+              <Ionicons name="camera-outline" size={22} color="#313131" />
 
-              {/* End walk button */}
-              <Pressable
-                style={styles.endWalkButton}
-                onPress={() => navigation.navigate("LogWalk")}
-              >
-                <Text style={styles.finishText}>Finish Walk</Text>
-              </Pressable>
-            </View>
+              <Text style={styles.finishText}>Open Camera</Text>
+            </Pressable>
+
+            {/* End walk button */}
+            <Pressable
+              style={styles.endWalkButton}
+              onPress={() => navigation.navigate("LogWalk")}
+            >
+              <Text style={styles.finishText}>Finish Walk</Text>
+            </Pressable>
           </View>
         </View>
-      </Modal>
+      </View>
     </View>
   );
 }
@@ -124,10 +121,9 @@ const styles = StyleSheet.create({
   },
   map: {
     width: "100%",
-    height: "80%",
+    height: "100%",
   },
   modalContainer: {
-    flex: 1,
     justifyContent: "flex-end",
   },
 
@@ -135,15 +131,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FEFCFA",
     padding: 25,
     paddingBottom: 40,
-  },
-
-  dragLine: {
-    width: 45,
-    height: 5,
-    borderRadius: 5,
-    backgroundColor: "#CCC",
-    marginBottom: 20,
-    alignItems: "center",
   },
 
   popTitle: {
@@ -173,11 +160,14 @@ const styles = StyleSheet.create({
   },
 
   endWalkButton: {
+    flexDirection: "row",
     backgroundColor: "#CFE5FD",
-    padding: 16,
+    padding: 12,
     borderRadius: 7,
     width: "48%",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
   },
 
   finishText: {

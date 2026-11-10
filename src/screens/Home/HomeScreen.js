@@ -1,11 +1,24 @@
 // import { signOut } from "firebase/auth";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
-import { StyleSheet, Text, Image, View, Pressable } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  Image,
+  View,
+  Pressable,
+  ScrollView,
+} from "react-native";
 
 import { firebase_auth } from "../../firebaseConfig";
+import { samplePlaces } from "../../data/samplePlaces";
 
 export default function HomeScreen({ navigation }) {
   const user = firebase_auth.currentUser;
+  const suggestedPlaces = samplePlaces.slice(0, 4);
+  const [updatingId, setUpdatingId] = useState(null);
+  const [savedIds, setSavedIds] = useState([]);
 
   return (
     <View style={styles.container}>
@@ -37,6 +50,33 @@ export default function HomeScreen({ navigation }) {
           <Text style={styles.buttonText}>Begin Walk</Text>
         </Pressable>
         <Text style={styles.subtitle}>Suggested Trails</Text>
+      </View>
+      <View style={styles.suggestionsSection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.cardList}
+        >
+          {suggestedPlaces.map((place) => (
+            <View key={place.id} style={styles.placeCard}>
+              <View style={styles.imageContainer}>
+                {place.image ? (
+                  <Image
+                    source={place.image}
+                    style={styles.placeImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.imagePlaceholder}>
+                    <Ionicons name="leaf-outline" size={35} color="#8F9E42" />
+                  </View>
+                )}
+              </View>
+
+              <Text style={styles.placeName}>{place.name}</Text>
+            </View>
+          ))}
+        </ScrollView>
       </View>
     </View>
   );
@@ -115,5 +155,32 @@ const styles = StyleSheet.create({
   logoImg: {
     width: 100,
     height: 100,
+  },
+  suggestionsSection: {
+    backgroundColor: "#FEFCFA",
+    paddingTop: 18,
+    paddingBottom: 20,
+  },
+  placeCard: {
+    width: 200,
+    marginLeft: 18,
+    backgroundColor: "#CFE5FD",
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+
+  imageContainer: {
+    height: 150,
+  },
+
+  placeImage: {
+    width: "100%",
+    height: "100%",
+  },
+  placeName: {
+    fontFamily: "PawPath-Medium",
+    fontSize: 12,
+    color: "#333",
+    padding: 12,
   },
 });
