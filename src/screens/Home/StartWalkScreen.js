@@ -18,6 +18,8 @@ export default function StartWalkScreen({ navigation }) {
 
   // reference to the MapView component to trigger camera animations
   const mapRef = useRef(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [seconds, setSeconds] = useState(0);
 
   // convert the text address in 'searchLocation' into coordinates
   // animate the map to that location
@@ -71,6 +73,28 @@ export default function StartWalkScreen({ navigation }) {
     })();
   }, []);
 
+  useEffect(() => {
+    let interval;
+
+    if (isRunning) {
+      interval = setInterval(() => {
+        setSeconds((prev) => prev + 1);
+      }, 1000);
+    }
+
+    return () => clearInterval(interval);
+  }, [isRunning]);
+
+  const formatTime = (totalSeconds) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+
+    return [hours, minutes, secs]
+      .map((value) => String(value).padStart(2, "0"))
+      .join(":");
+  };
+
   return (
     <View style={styles.container}>
       {/* Map Component */}
@@ -90,7 +114,21 @@ export default function StartWalkScreen({ navigation }) {
           <Text style={styles.popTitle}>Your Walk</Text>
 
           <View style={styles.timerInfo}>
-            <Text style={styles.timerLabel}>Walk Duration</Text>
+            <View style={styles.timerTextContainer}>
+              <Text style={styles.timerDisplay}>{formatTime(seconds)}</Text>
+              <Text style={styles.timerLabel}>Walk Duration</Text>
+            </View>
+
+            <Pressable
+              style={styles.timerButton}
+              onPress={() => setIsRunning(!isRunning)}
+            >
+              <Ionicons
+                name={isRunning ? "pause" : "play"}
+                size={25}
+                color="#ffff"
+              />
+            </Pressable>
           </View>
 
           {/* Open camera button */}
@@ -175,10 +213,22 @@ const styles = StyleSheet.create({
     fontFamily: "PawPath-Regular",
     color: "#333",
   },
+
+  //timer button container items
   timerInfo: {
+    flexDirection: "row",
     backgroundColor: "#D4D88E",
     padding: 20,
     marginBottom: 20,
     borderRadius: 7,
+    justifyContent: "space-between",
+  },
+  timerButton: {
+    padding: 10,
+    marginTop: 25,
+    borderRadius: 25,
+    backgroundColor: "#333",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

@@ -1,5 +1,5 @@
 // import { signOut } from "firebase/auth";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
@@ -102,6 +102,7 @@ export default function HomeScreen({ navigation }) {
     >
       <Text style={styles.logoTitle}>Pawpath</Text>
       <Text style={styles.title}>Hi, {user?.displayName || "User"} </Text>
+
       {/* display weather information */}
       <View style={styles.headerInfoContainer}>
         {weather && (
@@ -125,7 +126,12 @@ export default function HomeScreen({ navigation }) {
         )}
 
         {/* plan for today */}
-        <Pressable style={styles.activityPlan}>
+        <Pressable
+          style={styles.activityPlan}
+          onPress={() =>
+            navigation.navigate("Calendar", { screen: "PlanWalk" })
+          }
+        >
           <Text style={styles.activityText}>Today's Plan</Text>
           <Text style={styles.activityText}>+ Add Activity</Text>
         </Pressable>
@@ -185,7 +191,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logoTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontFamily: "PawPath-Bold",
     color: "#000",
     marginTop: 25,
