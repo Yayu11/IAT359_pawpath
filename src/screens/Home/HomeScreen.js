@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
+  ActivityIndicator,
   StyleSheet,
   Text,
   Image,
@@ -17,23 +18,118 @@ import { samplePlaces } from "../../data/samplePlaces";
 export default function HomeScreen({ navigation }) {
   const user = firebase_auth.currentUser;
   const suggestedPlaces = samplePlaces.slice(0, 4);
-  const [updatingId, setUpdatingId] = useState(null);
-  const [savedIds, setSavedIds] = useState([]);
+  const [weather, setWeather] = useState(null); //weather
+  const [loading, setLoading] = useState(true); // loading state
+  const [error, setError] = useState(null);
+
+  // set conditions for weather icon according to weather data
+  const getWeatherIcon = (condition) => {
+    if (!condition) return "cloud-outline";
+
+    const weather = condition.toLowerCase();
+
+    if (weather.includes("sun")) {
+      return "sunny";
+    }
+
+    if (weather.includes("cloud")) {
+      return "cloud";
+    }
+
+    if (weather.includes("rain")) {
+      return "rainy";
+    }
+
+    if (weather.includes("snow")) {
+      return "snow";
+    }
+
+    if (weather.includes("thunder")) {
+      return "thunderstorm";
+    }
+
+    return "partly-sunny";
+  };
+
+  // fetch weather data using coordinates
+  async function fetchWeather() {
+    const username = process.env.EXPO_PUBLIC_USERNAME;
+
+    try {
+      const response = await fetch(
+        `http://api.geonames.org/findNearByWeatherJSON?lat=49.19&lng=-123.17&username=${username}`,
+      );
+      const data = await response.json();
+
+      if (response.ok && data.weatherObservation) {
+        setWeather(data.weatherObservation);
+      } else {
+        // Handle cases where API returns an error message in the body
+        setError(data.status?.message || "Failed to fetch weather");
+      }
+    } catch (err) {
+      setError(err.message || "Failed to fetch weather");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    fetchWeather();
+  }, []);
+
+  // rendering logic
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.errorText}>Error: {error}</Text>
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
       <Text style={styles.logoTitle}>Pawpath</Text>
-
       <Text style={styles.title}>Hi, {user?.displayName || "User"} </Text>
+      {/* display weather information */}
+      <View style={styles.headerInfoContainer}>
+        {weather && (
+          <View style={styles.weatherCard}>
+            <Ionicons
+              name={getWeatherIcon(weather.clouds)}
+              size={30}
+              color="#CFE5FD"
+            />
+            <View style={styles.weatherInfo}>
+              {/* <Text style={styles.cityText}>
+                Location: {weather.stationName || "N/A"}
+              </Text> */}
+              <Text style={styles.tempText}>{weather.temperature}°C</Text>
+              <Text style={styles.descText}>Humidity: {weather.humidity}%</Text>
+              <Text style={styles.descText}>
+                Wind Speed: {weather.windSpeed} m/s
+              </Text>
+            </View>
+          </View>
+        )}
 
-      {/* plan for today */}
-      <View style={styles.planContainer}>
+        {/* plan for today */}
         <Pressable style={styles.activityPlan}>
           <Text style={styles.activityText}>Today's Plan</Text>
           <Text style={styles.activityText}>+ Add Activity</Text>
         </Pressable>
       </View>
-
       {/* walk button */}
       <View style={styles.buttonContainer}>
         <Pressable
@@ -78,7 +174,7 @@ export default function HomeScreen({ navigation }) {
           ))}
         </ScrollView>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -95,6 +191,13 @@ const styles = StyleSheet.create({
     marginTop: 25,
     marginBottom: 5,
   },
+  headerInfoContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "stretch",
+    gap: 10,
+    marginBottom: 20,
+  },
   title: {
     fontSize: 25,
     fontFamily: "PawPath-Regular",
@@ -105,16 +208,8 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     fontFamily: "PawPath-Regular",
-    marginTop: 40,
+    marginTop: 30,
   },
-
-  email: {
-    fontSize: 14,
-    fontFamily: "PawPath-Regular",
-    color: "#666",
-    marginBottom: 30,
-  },
-
   button: {
     backgroundColor: "#D4D88E",
     paddingHorizontal: 30,
@@ -156,6 +251,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
   },
+  // suggested trails styling
   suggestionsSection: {
     backgroundColor: "#FEFCFA",
     paddingTop: 18,
@@ -182,5 +278,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#333",
     padding: 12,
+  },
+  // weather styling
+  weatherCard: {
+    flex: 1,
+    flexDirection: "column",
+    backgroundColor: "#FEFCFA",
+    marginLeft: 20,
+  },
+  weatherInfo: {
+    flex: 1,
+  },
+  cityText: {
+    fontSize: 14,
+    fontFamily: "Pawpath-Medium",
+  },
+  tempText: {
+    fontSize: 28,
+    fontFamily: "Pawpath-Bold",
+  },
+  descText: {
+    fontSize: 12,
+    fontFamily: "Pawpath-Regular",
+    color: "#666",
   },
 });
