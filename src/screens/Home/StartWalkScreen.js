@@ -11,7 +11,7 @@ export default function StartWalkScreen({ navigation }) {
 
   // state management
   const [currentLocation, setCurrentLocation] = useState(null); // stores user's GPS coords
-
+  const [modalVisible, setModalVisible] = useState(true);
   // initialize Geocoder with Google Maps API Key
   Geocoder.init(apiKey);
 
@@ -62,7 +62,7 @@ export default function StartWalkScreen({ navigation }) {
       if (location) {
         setCurrentLocation(location);
         console.log(
-          `Current location: lat: ${currentLocationlocation.coords.latitude}, lng: ${currentLocation.coords.longitude}`,
+          `Current location: lat: ${location.coords.latitude}, lng: ${location.coords.longitude}`,
         );
       } else {
         console.log("Current location not obtained");
@@ -83,31 +83,37 @@ export default function StartWalkScreen({ navigation }) {
         }}
         showsMyLocationButton // enable the "Current Location" button
         showsUserLocation // show the blue dot for user's position
+        // use Google Maps on Android on both Android and iOS
+        provider={PROVIDER_GOOGLE}
       />
-      <View style={styles.modalContainer}>
-        <View style={styles.bottomSheet}>
-          <Text style={styles.popTitle}>Your Walk</Text>
+      <Modal transparent={true} animationType="slide">
+        <View style={styles.modalContainer}>
+          {/* pull up tab */}
+          <View style={styles.bottomSheet}>
+            <View style={styles.dragLine} />
+            <Text style={styles.popTitle}>Your Walk</Text>
 
-          <View style={styles.timerInfo}>
-            <Text style={styles.timerLabel}>Walk Duration</Text>
-          </View>
+            <View style={styles.timerInfo}>
+              <Text style={styles.timerLabel}>Walk Duration</Text>
+            </View>
 
-          {/* Open camera button */}
-          <View style={styles.buttonRow}>
-            <Pressable style={styles.endWalkButton}>
-              <Text style={styles.finishText}>Open Camera</Text>
-            </Pressable>
+            {/* Open camera button */}
+            <View style={styles.buttonRow}>
+              <Pressable style={styles.endWalkButton}>
+                <Text style={styles.finishText}>Open Camera</Text>
+              </Pressable>
 
-            {/* End walk button */}
-            <Pressable
-              style={styles.endWalkButton}
-              onPress={() => navigation.navigate("LogWalk")}
-            >
-              <Text style={styles.finishText}>Finish Walk</Text>
-            </Pressable>
+              {/* End walk button */}
+              <Pressable
+                style={styles.endWalkButton}
+                onPress={() => navigation.navigate("LogWalk")}
+              >
+                <Text style={styles.finishText}>Finish Walk</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
-      </View>
+      </Modal>
     </View>
   );
 }
