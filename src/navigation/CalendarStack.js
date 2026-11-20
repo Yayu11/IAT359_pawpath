@@ -10,11 +10,21 @@ const Stack = createNativeStackNavigator();
 
 export default function CalendarStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator
+      initialRouteName="CalendarHome"
+      screenOptions={{ headerShown: false }}
+    >
       <Stack.Screen name="CalendarHome" component={CalendarScreen} />
 
       <Stack.Screen name="CreateMemory" component={CreateMemoryScreen} />
-      <Stack.Screen name="PlanWalk" component={PlanWalkScreen} />
+      <Stack.Screen
+        name="PlanWalk"
+        component={PlanWalkScreen}
+        options={({ route }) => ({
+          animation:
+            route.params?.from === "Home" ? "none" : "slide_from_right",
+        })}
+      />
       <Stack.Screen
         name="MemoryDetail"
         component={MemoryDetailScreen}

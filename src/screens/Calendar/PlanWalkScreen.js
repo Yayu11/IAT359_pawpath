@@ -28,6 +28,9 @@ import {
 
 export default function PlanWalkScreen({ navigation, route }) {
   const planId = route.params?.planId;
+  // Identify which screen opened PlanWalkScreen
+  const from = route.params?.from || "Calendar";
+
   const isEditing = Boolean(planId);
 
   //Form Data State
@@ -140,6 +143,19 @@ export default function PlanWalkScreen({ navigation, route }) {
     };
   }, [planId, isEditing, navigation]);
 
+  function handleGoBack() {
+    if (from === "Home") {
+      // Reset the Calendar stack to CalendarHome
+      navigation.popToTop();
+
+      // Switch back to the Home tab
+      navigation.getParent()?.navigate("Home");
+    } else {
+      // Return to CalendarHome
+      navigation.popToTop();
+    }
+  }
+
   //Save a plan to Firestore
   async function handleSavePlan() {
     if (!title.trim() || !location.trim() || !date || !time) {
@@ -186,7 +202,8 @@ export default function PlanWalkScreen({ navigation, route }) {
       if (isEditing) {
         navigation.popToTop();
       } else {
-        navigation.goBack();
+        // navigation.goBack();
+        handleGoBack();
       }
     } catch (error) {
       console.error("Save plan error:", error);
@@ -225,7 +242,8 @@ export default function PlanWalkScreen({ navigation, route }) {
         <View style={styles.header}>
           <Pressable
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={handleGoBack}
+            // onPress={() => navigation.goBack()}
           >
             <Ionicons name="arrow-back" size={19} color="#333" />
             <Text style={styles.backText}>Back</Text>
@@ -356,7 +374,8 @@ export default function PlanWalkScreen({ navigation, route }) {
 
           <Pressable
             style={styles.discardButton}
-            onPress={() => navigation.goBack()}
+            onPress={handleGoBack}
+            // onPress={() => navigation.goBack()}
           >
             <Text style={styles.buttonText}>Discard</Text>
           </Pressable>

@@ -129,7 +129,11 @@ export default function HomeScreen({ navigation }) {
         <Pressable
           style={styles.activityPlan}
           onPress={() =>
-            navigation.navigate("Calendar", { screen: "PlanWalk" })
+            navigation.navigate("Calendar", {
+              screen: "PlanWalk",
+              initial: false,
+              params: { from: "Home" },
+            })
           }
         >
           <Text style={styles.activityText}>Today's Plan</Text>
