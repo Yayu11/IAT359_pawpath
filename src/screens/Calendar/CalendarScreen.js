@@ -90,7 +90,14 @@ export default function CalendarScreen({ navigation }) {
   // Open CreateMemoryScreen or PlanWalkScreen
   function openCreateScreen(screenName) {
     setShowMenu(false);
-    navigation.navigate(screenName);
+    // navigation.navigate(screenName);
+    if (screenName === "PlanWalk") {
+      navigation.navigate("PlanWalk", {
+        from: "Calendar",
+      });
+    } else {
+      navigation.navigate(screenName);
+    }
   }
 
   // Render on walk plan in FlatList

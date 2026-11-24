@@ -1,31 +1,64 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
   Alert,
-  Image,
+  ActivityIndicator,
+  FlatList,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 
-import { samplePlaces } from "../../data/samplePlaces";
+import PlacePhoto from "../../components/PlacePhoto";
+import PlaceInfo from "../../components/PlaceInfo";
 
 import {
   getFavourites,
+  getFavouritesWithDetails,
   removeFavourite,
   saveFavourite,
 } from "../../utils/favouriteStorage";
 
-export default function ChooseLocationScreen({ navigation }) {
+const EMPTY_PLACES = [];
+
+export default function ChooseLocationScreen({ navigation, route }) {
+  //  Get real park data passed through navigation
+  const places = route.params?.places ?? EMPTY_PLACES;
+
+  //Get the search area's coordinates
+  const searchCenter = route.params?.searchCenter ?? null;
+
   const [searchText, setSearchText] = useState("");
   const [filter, setFilter] = useState("All");
   const [savedIds, setSavedIds] = useState([]);
 
+  // Stores complete favourite objects from Firestore
+  const [savedPlaces, setSavedPlaces] = useState([]);
+
+  // Loading states
+  const [loadingFavourites, setLoadingFavourites] = useState(true);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [savedError, setSavedError] = useState("");
+
+  // Prevent repeated favourite updates
+  const [updatingId, setUpdatingId] = useState(null);
+
+  // Track visible list items
+  const [visibleIds, setVisibleIds] = useState([]);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 30,
+  }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    setVisibleIds(viewableItems.map((entry) => entry.item.id));
+  }).current;
+
+  // --------------------------------------------------
   // Load saved favourites when screen opens
   useFocusEffect(
     useCallback(() => {
@@ -36,10 +69,18 @@ export default function ChooseLocationScreen({ navigation }) {
           const results = await getFavourites();
 
           if (active) {
+            // Store IDs for heart icon states
             setSavedIds(results.map((item) => item.id));
           }
         } catch (error) {
           console.log("Favourite error:", error);
+          if (active) {
+            Alert.alert("Error", "Unable to load favourites.");
+          }
+        } finally {
+          if (active) {
+            setLoadingFavourites(false);
+          }
         }
       }
 
@@ -51,36 +92,168 @@ export default function ChooseLocationScreen({ navigation }) {
     }, []),
   );
 
+  // --------------------------------------------------
+  // Retrieve full saved place information
+  // only when the Saved filter is selected
+  useFocusEffect(
+    useCallback(() => {
+      if (filter !== "Saved") {
+        setLoadingSaved(false);
+        return;
+      }
+
+      let active = true;
+
+      async function loadSavedPlaces() {
+        try {
+          setLoadingSaved(true);
+          setSavedError("");
+
+          const results = await getFavouritesWithDetails(places, searchCenter);
+
+          if (active) {
+            setSavedPlaces(results);
+
+            setSavedIds(results.map((place) => place.id));
+          }
+        } catch (error) {
+          console.log("Saved places error:", error.message);
+
+          if (active) {
+            setSavedError("Unable to load saved places.");
+          }
+        } finally {
+          if (active) {
+            setLoadingSaved(false);
+          }
+        }
+      }
+
+      loadSavedPlaces();
+
+      return () => {
+        active = false;
+      };
+
+      // Include search coordinates
+    }, [filter, places, searchCenter]),
+  );
+
   // Save or remove a place
   async function toggleFavourite(place) {
+    // Prevent duplicate save/remove requests
+    if (updatingId !== null || loadingFavourites || loadingSaved) return;
+
     try {
+      setUpdatingId(place.id);
+
       if (savedIds.includes(place.id)) {
         await removeFavourite(place.id);
 
         setSavedIds((previous) => previous.filter((id) => id !== place.id));
+        setSavedPlaces((previous) =>
+          previous.filter((item) => item.id !== place.id),
+        );
       } else {
         await saveFavourite(place);
 
         setSavedIds((previous) => [...previous, place.id]);
+        setSavedPlaces((previous) => [...previous, place]);
       }
     } catch (error) {
       Alert.alert("Error", "Unable to update saved places.");
+    } finally {
+      setUpdatingId(null);
     }
   }
 
+  // --------------------------------------------------
+  // Display all saved places when Saved is selected,
+  // including places outside the current search area.
+  const availablePlaces = filter === "Saved" ? savedPlaces : places;
+
   // Filter sample places by search text and type
-  const filteredPlaces = samplePlaces.filter((place) => {
+  const filteredPlaces = availablePlaces.filter((place) => {
+    // Search by place name
     const matchesSearch = place.name
       .toLowerCase()
       .includes(searchText.toLowerCase());
 
     const matchesType =
-      filter === "All" ||
-      place.type === filter ||
-      (filter === "Saved" && savedIds.includes(place.id));
+      filter === "All" || filter === "Saved" || place.type === filter;
 
     return matchesSearch && matchesType;
   });
+
+  // --------------------------------------------------
+  // Empty state messages
+  function getEmptyMessage() {
+    if (searchText.trim()) {
+      return "No matching places found.";
+    }
+
+    if (filter === "Saved") {
+      return "You haven't saved any places yet.";
+    }
+
+    if (filter === "Trail") {
+      return "Trail data is not available yet.";
+    }
+
+    if (places.length === 0) {
+      return "No nearby parks available.";
+    }
+
+    return "No matching places found.";
+  }
+
+  // --------------------------------------------------
+  //  Render an individual place
+  function renderPlace({ item: place }) {
+    const isSaved = savedIds.includes(place.id);
+
+    return (
+      <View style={styles.placeRow}>
+        {/* Shared real photo component */}
+        <Pressable
+          style={styles.placeContent}
+          onPress={() =>
+            navigation.navigate("DetailPlace", {
+              place,
+            })
+          }
+          disabled={place.detailsUnavailable === true}
+        >
+          <PlacePhoto
+            place={place}
+            style={styles.placeImage}
+            enabled={visibleIds.includes(place.id)}
+          />
+
+          <View style={styles.placeInfo}>
+            <Text style={styles.placeName}>
+              {place.name ?? "Unnamed Place"}
+            </Text>
+
+            <PlaceInfo place={place} />
+          </View>
+        </Pressable>
+
+        {/* favourite button */}
+        <Pressable
+          style={styles.heartButton}
+          onPress={() => toggleFavourite(place)}
+          disabled={updatingId !== null || loadingFavourites || loadingSaved}
+        >
+          <Ionicons
+            name={isSaved ? "heart" : "heart-outline"}
+            size={19}
+            color={isSaved ? "#F46C6C" : "#333"}
+          />
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -132,53 +305,38 @@ export default function ChooseLocationScreen({ navigation }) {
         ))}
       </View>
 
+      {/* Source attribution */}
+      <Text style={styles.sourceText}>Google Maps</Text>
+
       {/* Places list */}
-      <ScrollView
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredPlaces.length === 0 ? (
-          <Text style={styles.emptyText}>No matching places found.</Text>
-        ) : (
-          filteredPlaces.map((place) => (
-            <View key={place.id} style={styles.placeRow}>
-              {place.image ? (
-                <Image source={place.image} style={styles.placeImage} />
-              ) : (
-                <View style={styles.imagePlaceholder}>
-                  <Ionicons name="leaf-outline" size={28} color="#8F9E42" />
-                </View>
-              )}
-
-              <View style={styles.placeInfo}>
-                <Text style={styles.placeName}>{place.name}</Text>
-
-                <View style={styles.detailsRow}>
-                  <Text style={styles.detailText}>{place.type}</Text>
-
-                  <Text style={styles.detailText}>🐾 {place.walkDistance}</Text>
-
-                  <Text style={styles.detailText}>
-                    {place.difficulty === "Moderate" ? "🟠" : "🟢"}{" "}
-                    {place.difficulty}
-                  </Text>
-                </View>
-              </View>
-
-              <Pressable
-                style={styles.heartButton}
-                onPress={() => toggleFavourite(place)}
-              >
-                <Ionicons
-                  name={savedIds.includes(place.id) ? "heart" : "heart-outline"}
-                  size={19}
-                  color={savedIds.includes(place.id) ? "#F46C6C" : "#333"}
-                />
-              </Pressable>
-            </View>
-          ))
-        )}
-      </ScrollView>
+      {filter === "Saved" && (loadingSaved || loadingFavourites) ? (
+        <ActivityIndicator size="large" color="#8F9E42" style={styles.loader} />
+      ) : filter === "Saved" && savedError ? (
+        <Text style={styles.emptyText}>{savedError}</Text>
+      ) : (
+        <FlatList
+          data={filteredPlaces}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderPlace}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          // Only enable photos for visible rows
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableItemsChanged}
+          extraData={{
+            savedIds,
+            updatingId,
+            visibleIds,
+            loadingFavourites,
+          }}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={3}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>{getEmptyMessage()}</Text>
+          }
+        />
+      )}
     </View>
   );
 }
@@ -278,16 +436,21 @@ const styles = StyleSheet.create({
     height: 65,
     borderRadius: 8,
   },
-
-  imagePlaceholder: {
-    width: 70,
-    height: 65,
-    borderRadius: 8,
-    backgroundColor: "#E8EEDB",
-    justifyContent: "center",
-    alignItems: "center",
+  loader: {
+    marginTop: 35,
   },
-
+  placeContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  sourceText: {
+    fontSize: 12,
+    color: "#555",
+    textAlign: "right",
+    marginBottom: 5,
+  },
   placeInfo: {
     flex: 1,
     gap: 7,
@@ -299,17 +462,17 @@ const styles = StyleSheet.create({
     color: "#222",
   },
 
-  detailsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 7,
-  },
+  // detailsRow: {
+  //   flexDirection: "row",
+  //   flexWrap: "wrap",
+  //   gap: 7,
+  // },
 
-  detailText: {
-    fontFamily: "PawPath-Regular",
-    fontSize: 10,
-    color: "#444",
-  },
+  // detailText: {
+  //   fontFamily: "PawPath-Regular",
+  //   fontSize: 10,
+  //   color: "#444",
+  // },
 
   heartButton: {
     alignSelf: "flex-start",
