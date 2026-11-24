@@ -2,6 +2,8 @@ import { initializeApp } from "firebase/app";
 // import Firebase Authentication functionality into your project.
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+// API for nearby trails
+import { getFunctions } from "firebase/functions";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -19,3 +21,4 @@ export const firebase_app = initializeApp(firebaseConfig);
 export const firebase_auth = getAuth(firebase_app);
 // Initialize Firestore
 export const db = getFirestore(firebase_app);
+export const firebase_functions = getFunctions(firebase_app, "us-central1");

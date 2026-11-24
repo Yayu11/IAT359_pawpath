@@ -6,6 +6,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 
 import {
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +19,8 @@ import {
 } from "react-native";
 
 import MonthCalendar from "../../components/MonthCalendar";
+import LocationPicker from "../../components/LocationPicker";
+
 import {
   formatDate,
   formatDisplayDate,
@@ -46,6 +49,8 @@ export default function PlanWalkScreen({ navigation, route }) {
   const [showTimePicker, setShowTimePicker] = useState(false); // NEW: Controls whether native time picker is visible
   const [loading, setLoading] = useState(false);
   const [initializing, setIntializing] = useState(true);
+  // Location picker visibility
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   // Convert Date object into HH:MM (24-hour format)
   function formatTime(dateObject) {
@@ -143,6 +148,20 @@ export default function PlanWalkScreen({ navigation, route }) {
     };
   }, [planId, isEditing, navigation]);
 
+  // --------------------------------------------------
+  // Open location picker
+  function openLocationPicker() {
+    // Close keyboard and other selection panels
+    Keyboard.dismiss();
+
+    setShowCalendar(false);
+    setShowTimePicker(false);
+
+    setShowLocationPicker(true);
+  }
+
+  // --------------------------------------------------
+  // Navigate back according to the originating screen
   function handleGoBack() {
     if (from === "Home") {
       // Reset the Calendar stack to CalendarHome
@@ -156,6 +175,7 @@ export default function PlanWalkScreen({ navigation, route }) {
     }
   }
 
+  // --------------------------------------------------
   //Save a plan to Firestore
   async function handleSavePlan() {
     if (!title.trim() || !location.trim() || !date || !time) {
@@ -242,8 +262,8 @@ export default function PlanWalkScreen({ navigation, route }) {
         <View style={styles.header}>
           <Pressable
             style={styles.backButton}
-            onPress={handleGoBack}
             // onPress={() => navigation.goBack()}
+            onPress={handleGoBack}
           >
             <Ionicons name="arrow-back" size={19} color="#333" />
             <Text style={styles.backText}>Back</Text>
@@ -264,14 +284,27 @@ export default function PlanWalkScreen({ navigation, route }) {
             onChangeText={setTitle}
           />
 
-          {/* Location */}
-          <TextInput
-            style={styles.input}
-            placeholder="Location"
-            placeholderTextColor="#3B3B3B"
-            value={location}
-            onChangeText={setLocation}
-          />
+          {/* Location selection field */}
+          <Pressable
+            style={styles.locationRow}
+            onPress={openLocationPicker}
+            disabled={loading || initializing}
+            accessibilityRole="button"
+            accessibilityLabel="Choose walk location"
+          >
+            <Ionicons name="location-outline" size={20} color="#333" />
+
+            <Text
+              style={[
+                styles.locationText,
+                !location && styles.locationPlaceholder,
+              ]}
+            >
+              {location || "Location"}
+            </Text>
+
+            <Ionicons name="chevron-forward" size={18} color="#333" />
+          </Pressable>
 
           {/* Date */}
           <Pressable
@@ -381,6 +414,15 @@ export default function PlanWalkScreen({ navigation, route }) {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Shared LocationPicker modal */}
+      {showLocationPicker && (
+        <LocationPicker
+          visible={showLocationPicker}
+          onClose={() => setShowLocationPicker(false)}
+          onSelectLocation={setLocation}
+        />
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -425,6 +467,25 @@ const styles = StyleSheet.create({
     padding: 15,
     fontFamily: "PawPath-Regular",
     fontSize: 14,
+  },
+  //  Location selection styling
+  locationRow: {
+    backgroundColor: "#CFE5FD",
+    borderRadius: 6,
+    minHeight: 48,
+    padding: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  locationText: {
+    flex: 1,
+    fontFamily: "PawPath-Regular",
+    fontSize: 14,
+    color: "#222",
+  },
+  locationPlaceholder: {
+    color: "#3B3B3B",
   },
   selectionRow: {
     backgroundColor: "#CFE5FD",
@@ -479,7 +540,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  // Done button text
+  // NEW: Done button text
   timeDoneText: {
     fontFamily: "PawPath-SemiBold",
     fontSize: 13,

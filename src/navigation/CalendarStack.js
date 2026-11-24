@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useIsFocused } from "@react-navigation/native";
 
 import CalendarScreen from "../screens/Calendar/CalendarScreen";
 import CreateMemoryScreen from "../screens/Calendar/CreateMemoryScreen";
@@ -9,10 +10,14 @@ import WalkDetailScreen from "../screens/Calendar/WalkDetailScreen";
 const Stack = createNativeStackNavigator();
 
 export default function CalendarStack() {
+  const isFocused = useIsFocused();
   return (
     <Stack.Navigator
       initialRouteName="CalendarHome"
-      screenOptions={{ headerShown: false }}
+      screenOptions={{
+        headerShown: false,
+        animation: isFocused ? "default" : "none",
+      }}
     >
       <Stack.Screen name="CalendarHome" component={CalendarScreen} />
 

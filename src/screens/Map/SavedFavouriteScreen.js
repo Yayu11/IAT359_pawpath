@@ -1,26 +1,54 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import { useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import {
   ActivityIndicator,
   Alert,
-  Image,
+  FlatList,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 
-import { samplePlaces } from "../../data/samplePlaces";
+import PlacePhoto from "../../components/PlacePhoto";
+import PlaceInfo from "../../components/PlaceInfo";
 
-import { getFavourites, removeFavourite } from "../../utils/favouriteStorage";
+import {
+  getFavouritesWithDetails,
+  removeFavourite,
+} from "../../utils/favouriteStorage";
 
-export default function SavedFavouriteScreen({ navigation }) {
+const EMPTY_PLACES = [];
+
+export default function SavedFavouriteScreen({ navigation, route }) {
+  //Reuse nearby place information from MapScreen
+  const places = route.params?.places ?? EMPTY_PLACES;
+
+  // Get the current search area's coordinates
+  const searchCenter = route.params?.searchCenter ?? null;
+
   const [favourites, setFavourites] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingError, setLoadingError] = useState("");
 
+  // Track which place is being removed
+  const [removingId, setRemovingId] = useState(null);
+
+  // --------------------------------------------------
+  // Track visible rows for photo loading
+  const [visibleIds, setVisibleIds] = useState([]);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 30,
+  }).current;
+
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    setVisibleIds(viewableItems.map((entry) => entry.item.id));
+  }).current;
+
+  // --------------------------------------------------
   // READ saved places from Firestore
   useFocusEffect(
     useCallback(() => {
@@ -29,16 +57,20 @@ export default function SavedFavouriteScreen({ navigation }) {
       async function loadFavourites() {
         try {
           setLoading(true);
+          setLoadingError("");
 
-          const results = await getFavourites();
+          // Reuse nearby place information
+          // and calculate distance from the search area.
+          const results = await getFavouritesWithDetails(places, searchCenter);
 
           if (active) {
             setFavourites(results);
           }
         } catch (error) {
-          console.log("Favourite loading error:", error);
+          console.log("Favourite loading error:", error.code, error.message);
 
           if (active) {
+            setLoadingError("Unable to load saved places.");
             Alert.alert("Error", "Unable to load saved places.");
           }
         } finally {
@@ -51,12 +83,17 @@ export default function SavedFavouriteScreen({ navigation }) {
       return () => {
         active = false;
       };
-    }, []),
+    }, [places, searchCenter]),
   );
 
+  // --------------------------------------------------
   // DELETE saved place from Firestore
   async function handleRemove(placeId) {
+    // Prevent multiple removal requests
+    if (removingId !== null) return;
+
     try {
+      setRemovingId(placeId);
       await removeFavourite(placeId);
 
       setFavourites((previous) =>
@@ -64,7 +101,51 @@ export default function SavedFavouriteScreen({ navigation }) {
       );
     } catch (error) {
       Alert.alert("Error", "Unable to remove saved place.");
+    } finally {
+      setRemovingId(null);
     }
+  }
+
+  // --------------------------------------------------
+  // Render an individual saved place
+  function renderPlace({ item: place }) {
+    return (
+      <View style={styles.placeRow}>
+        {/* Open selected place details */}
+        <Pressable
+          style={styles.placeContent}
+          onPress={() =>
+            navigation.navigate("DetailPlace", {
+              place,
+            })
+          }
+          disabled={place.detailsUnavailable === true}
+        >
+          <PlacePhoto
+            place={place}
+            style={styles.placeImage}
+            enabled={visibleIds.includes(place.id)}
+          />
+
+          <View style={styles.placeInfo}>
+            <Text style={styles.placeName}>
+              {place.name ?? "Unnamed Place"}
+            </Text>
+
+            <PlaceInfo place={place} />
+          </View>
+        </Pressable>
+
+        {/* Remove favourite button */}
+        <Pressable
+          style={styles.heartButton}
+          onPress={() => handleRemove(place.id)}
+          disabled={removingId !== null}
+        >
+          <Ionicons name="heart" size={19} color="#F46C6C" />
+        </Pressable>
+      </View>
+    );
   }
 
   return (
@@ -78,41 +159,45 @@ export default function SavedFavouriteScreen({ navigation }) {
 
       {loading ? (
         <ActivityIndicator size="large" color="#8F9E42" style={styles.loader} />
+      ) : loadingError ? (
+        // Display the actual loading error
+        <Text style={styles.emptyText}>{loadingError}</Text>
       ) : favourites.length === 0 ? (
-        <Text style={styles.emptyText}>No saved places yet.</Text>
+        // Empty state
+        <View style={styles.emptyContainer}>
+          <Ionicons name="heart-outline" size={42} color="#B5BA74" />
+
+          <Text style={styles.emptyText}>No saved places yet.</Text>
+
+          <Text style={styles.emptyDescription}>
+            Explore nearby parks and trails, then tap the heart icon to save
+            your favourite places.
+          </Text>
+        </View>
       ) : (
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {favourites.map((place) => {
-            const sample = samplePlaces.find((item) => item.id === place.id);
+        <>
+          {/* Source attribution */}
+          <Text style={styles.sourceText}>Google Maps</Text>
 
-            return (
-              <View key={place.id} style={styles.placeRow}>
-                {sample?.image ? (
-                  <Image source={sample.image} style={styles.placeImage} />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Ionicons name="leaf-outline" size={28} color="#8F9E42" />
-                  </View>
-                )}
-
-                <View style={styles.placeInfo}>
-                  <Text style={styles.placeName}>{place.name}</Text>
-
-                  <Text style={styles.detailsText}>
-                    {place.type} · 🐾 {place.walkDistance} · {place.difficulty}
-                  </Text>
-                </View>
-
-                <Pressable
-                  style={styles.heartButton}
-                  onPress={() => handleRemove(place.id)}
-                >
-                  <Ionicons name="heart" size={19} color="#F46C6C" />
-                </Pressable>
-              </View>
-            );
-          })}
-        </ScrollView>
+          {/* Display real saved places */}
+          <FlatList
+            data={favourites}
+            keyExtractor={(item) => String(item.id)}
+            renderItem={renderPlace}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.list}
+            // Control photo loading
+            viewabilityConfig={viewabilityConfig}
+            onViewableItemsChanged={onViewableItemsChanged}
+            extraData={{
+              visibleIds,
+              removingId,
+            }}
+            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            windowSize={3}
+          />
+        </>
       )}
     </View>
   );
@@ -176,15 +261,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 
-  imagePlaceholder: {
-    width: 67,
-    height: 67,
-    backgroundColor: "#E8EEDB",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
   placeInfo: {
     flex: 1,
     gap: 7,
@@ -207,5 +283,44 @@ const styles = StyleSheet.create({
     borderColor: "#D4D88E",
     borderRadius: 7,
     padding: 5,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 25,
+    paddingBottom: 100,
+  },
+
+  emptyDescription: {
+    fontFamily: "PawPath-Regular",
+    fontSize: 12,
+    color: "#777",
+    textAlign: "center",
+    marginTop: 10,
+    lineHeight: 19,
+  },
+
+  list: {
+    paddingBottom: 35,
+  },
+
+  sourceText: {
+    fontSize: 12,
+    color: "#555",
+    textAlign: "right",
+    marginBottom: 5,
+  },
+  detailsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  placeContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
 });

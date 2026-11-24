@@ -79,7 +79,11 @@ function ProtectedLayout() {
     >
       <Tab.Screen name="Home" component={HomeStack} />
 
-      <Tab.Screen name="Map" component={MapStack} />
+      <Tab.Screen
+        name="Map"
+        component={MapStack}
+        options={{ popToTopOnBlur: true }}
+      />
 
       <Tab.Screen
         name="Add"
@@ -90,7 +94,13 @@ function ProtectedLayout() {
         }}
       />
 
-      <Tab.Screen name="Calendar" component={CalendarStack} />
+      <Tab.Screen
+        name="Calendar"
+        component={CalendarStack}
+        options={{
+          popToTopOnBlur: true,
+        }}
+      />
 
       <Tab.Screen name="Profile" component={ProfileStack} />
     </Tab.Navigator>
