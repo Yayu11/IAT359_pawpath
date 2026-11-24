@@ -58,7 +58,10 @@ export default function LogWalkScreen({ navigation }) {
         />
 
         <View style={styles.buttonContainer}>
-          <Pressable style={styles.saveActivityButton}>
+          <Pressable
+            style={styles.saveActivityButton}
+            onPress={() => navigation.navigate("Profile")}
+          >
             <Text style={styles.buttonText}> Save Activity</Text>
           </Pressable>
           <Pressable
