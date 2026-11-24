@@ -1,383 +1,1000 @@
-import { useCallback, useState } from "react";
-import { useFocusEffect } from "@react-navigation/native";
+import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system/legacy";
 
 import {
-  ActivityIndicator,
   Alert,
+  ActivityIndicator,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
+import MonthCalendar from "../../components/MonthCalendar";
+import LocationPicker from "../../components/LocationPicker";
+
 import {
+  formatDate,
   formatDisplayDate,
-  getMemoriesByDate,
-  deleteMemory,
+  saveMemory,
+  getMemoryById,
+  updateMemory,
 } from "../../utils/calendarStorage";
 
-export default function MemoryDetailScreen({ navigation, route }) {
-  const { date } = route.params;
+// Folder used only for photos taken with PawPath's camera
+const CAMERA_FOLDER = `${FileSystem.documentDirectory}pawpath-camera/`;
 
-  const [memories, setMemories] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [deleting, setDeleting] = useState(false);
-  const [selectedMemoryId, setSelectedMemoryId] = useState(null);
+// Folder used for photos attached to saved memories
+const MEMORY_FOLDER = `${FileSystem.documentDirectory}pawpath-memories/`;
 
-  // Reload memories when returning from CreateMemoryScreen
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
+export default function CreateMemoryScreen({ navigation, route }) {
+  //  Determine whether this is Create or Edit mod
+  const memoryId = route.params?.memoryId;
+  const isEditing = Boolean(memoryId);
 
-      async function loadMemories() {
-        try {
-          setLoading(true);
+  // Memory form states
+  const [imageUri, setImageUri] = useState(null);
+  const [caption, setCaption] = useState("");
+  const [location, setLocation] = useState("");
+  const [date, setDate] = useState(formatDate(new Date()));
+  const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(isEditing);
+  const [originalImageUri, setOriginalImageUri] = useState(null); // Remember the original saved image
 
-          const result = await getMemoriesByDate(date);
+  // Location picker visibility
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
-          if (!active) return;
+  // Photo menu and gallery states
+  const [showPhotoMenu, setShowPhotoMenu] = useState(false);
+  const [showAppGallery, setShowAppGallery] = useState(false);
+  const [galleryPhotos, setGalleryPhotos] = useState([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
 
-          setMemories(result);
+  // Camera states
+  const [facing, setFacing] = useState("back");
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
+  const [capturing, setCapturing] = useState(false);
 
-          setCurrentIndex((previous) => {
-            if (result.length === 0) return 0;
+  const cameraRef = useRef(null);
 
-            // Keep the edited memory selected if it still exists
-            if (selectedMemoryId) {
-              const index = result.findIndex(
-                (item) => item.id === selectedMemoryId,
-              );
+  // Load existing memory information in Edit mode
+  useEffect(() => {
+    let active = true;
 
-              if (index !== -1) return index;
-            }
+    async function loadExistingMemory() {
+      if (!isEditing) {
+        setInitializing(false);
+        return;
+      }
 
-            // Find the index of the last available memory
-            const lastIndex = result.length - 1;
+      try {
+        setInitializing(true);
 
-            // If the previous index is too large, move to the last available memory
-            if (previous > lastIndex) {
-              return lastIndex;
-            }
+        const existingMemory = await getMemoryById(memoryId);
 
-            // Otherwise, keep the previously selected memory index
-            return previous;
-          });
-        } catch (error) {
-          console.log("Memory error:", error);
+        if (!active) return;
 
-          if (active) {
-            Alert.alert("Error", error.message || "Unable to load memories.");
-          }
-        } finally {
-          if (active) {
-            setLoading(false);
-          }
+        if (!existingMemory) {
+          Alert.alert("Not Found", "Memory not found.");
+          navigation.goBack();
+          return;
+        }
+
+        // Fill the form with previously saved information
+        setImageUri(existingMemory.imageUri || null);
+        setOriginalImageUri(existingMemory.imageUri || null);
+        setCaption(existingMemory.caption || "");
+        setLocation(existingMemory.location || "");
+        setDate(existingMemory.date || formatDate(new Date()));
+      } catch (error) {
+        console.log("Load memory error:", error);
+
+        if (active) {
+          Alert.alert("Error", error.message || "Unable to load the memory.");
+        }
+      } finally {
+        if (active) {
+          setInitializing(false);
         }
       }
+    }
 
-      loadMemories();
+    loadExistingMemory();
 
-      return () => {
-        active = false;
-      };
-    }, [date, selectedMemoryId]),
-  );
+    return () => {
+      active = false;
+    };
+  }, [memoryId, isEditing, navigation]);
 
-  function changeMemory(amount) {
-    setCurrentIndex((previous) => {
-      const newIndex = previous + amount;
+  // --------------------------------------------------
+  // Open LocationPicker
+  function openLocationPicker() {
+    Keyboard.dismiss();
 
-      // Prevent going before the first memory
-      if (newIndex < 0) {
-        return 0;
-      }
-
-      // Prevent going beyond the last memory
-      if (newIndex >= memories.length) {
-        return memories.length - 1;
-      }
-
-      // Otherwise, use the new index
-      return newIndex;
-    });
-
-    setSelectedMemoryId(null);
+    setShowLocationPicker(true);
   }
 
-  const memory = memories[currentIndex];
-
-  //Navigate to editing mode
-  function handleEditMemory() {
-    if (!memory || deleting) return;
-
-    navigation.navigate("CreateMemory", { memoryId: memory.id });
-  }
-
-  //Ask for confirmation before deleting
-  function handleDeleteMemory() {
-    if (!memory || deleting) return;
-    Alert.alert(
-      "Delete Memory",
-      "Are you sure you want to delete this memory",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => confirmDeleteMemory(memory.id),
-        },
-      ],
-    );
-  }
-
-  // Delete the selected memory from Firestore
-  async function confirmDeleteMemory(memoryId) {
+  // --------------------------------------------------
+  // Load saved photos from PawPath's camera folder
+  async function loadAppGallery() {
     try {
-      setDeleting(true);
+      setGalleryLoading(true);
 
-      //Delete memory from Firestore
-      await deleteMemory(memoryId);
+      // Check whether the camera folder exists
+      const folderInfo = await FileSystem.getInfoAsync(CAMERA_FOLDER);
 
-      //Remove the deleted memory from current UI
-      const updateMemories = memories.filter((item) => item.id !== memoryId);
-      setMemories(updateMemories);
-
-      // Adjust the selected index
-      setCurrentIndex((previous) =>
-        Math.max(0, Math.min(previous, updateMemories.length - 1)),
-      );
-
-      // Close the detail screen if no memories remain
-      if (updateMemories.length === 0) {
-        navigation.goBack();
+      if (!folderInfo.exists) {
+        setGalleryPhotos([]);
+        return;
       }
-    } catch (error) {
-      console.error("Delete memory error:", error);
 
-      Alert.alert("Error", error.message || "Unable to delete the memory.");
+      // Retrieve filenames saved in the camera folder
+      const filenames = await FileSystem.readDirectoryAsync(CAMERA_FOLDER);
+
+      // folder only contains PawPath camera photos
+      const photos = filenames
+        .sort((a, b) => b.localeCompare(a))
+        .map((name) => `${CAMERA_FOLDER}${name}`);
+
+      // Similar to setPhotos() in the lecture demo
+      setGalleryPhotos(photos);
+    } catch (error) {
+      console.log("Gallery loading error:", error);
+      Alert.alert("Error", "Unable to load PawPath Gallery.");
     } finally {
-      setDeleting(false);
+      setGalleryLoading(false);
     }
   }
 
+  // --------------------------------------------------
+  //Open PawPath Gallery
+  async function openAppGallery() {
+    setShowPhotoMenu(false);
+
+    // Refresh photos whenever the gallery opens
+    await loadAppGallery();
+
+    setShowAppGallery(true);
+  }
+
+  //Select an existing photo from PawPath Gallery
+  function selectAppPhoto(uri) {
+    setImageUri(uri);
+    setShowAppGallery(false);
+  }
+
+  // --------------------------------------------------
+  // Select a photo from the phone's photo library
+  async function pickImage() {
+    try {
+      const photoPermission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!photoPermission.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please allow access to your photos.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets?.length > 0) {
+        setImageUri(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.log("Image picker error:", error);
+      Alert.alert("Error", "Unable to select a photo.");
+    }
+  }
+
+  // --------------------------------------------------
+  // Open PawPath's in-app camera
+  async function openCamera() {
+    try {
+      if (!permission?.granted) {
+        const result = await requestPermission();
+
+        if (!result.granted) {
+          Alert.alert("Permission Required", "Please allow camera access.");
+          return;
+        }
+      }
+
+      setIsCameraReady(false);
+      setShowCamera(true);
+    } catch (error) {
+      console.log("Camera permission error:", error);
+      Alert.alert("Error", "Unable to open the camera.");
+    }
+  }
+
+  // Switch between front and back cameras
+  function toggleCamera() {
+    setIsCameraReady(false);
+
+    setFacing((current) => (current === "back" ? "front" : "back"));
+  }
+
+  // --------------------------------------------------
+  // Take a photo and save it immediately
+  async function takePhoto() {
+    if (!cameraRef.current || !isCameraReady || capturing) {
+      return;
+    }
+
+    try {
+      setCapturing(true);
+
+      // Capture photo with CameraView
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.8,
+      });
+
+      if (photo?.uri) {
+        //Create camera folder if needed
+        await FileSystem.makeDirectoryAsync(CAMERA_FOLDER, {
+          intermediates: true,
+        });
+
+        //Create a unique photo filename
+        const fileName = `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}.jpg`;
+
+        const savedCameraUri = `${CAMERA_FOLDER}${fileName}`;
+
+        //Copy captured photo into local app storage
+        await FileSystem.copyAsync({
+          from: photo.uri,
+          to: savedCameraUri,
+        });
+
+        // Update gallery state using the same
+        setGalleryPhotos((previousPhotos) => [
+          savedCameraUri,
+          ...previousPhotos,
+        ]);
+
+        // Show the photo in the Create Memory form
+        setImageUri(savedCameraUri);
+
+        setShowCamera(false);
+        setIsCameraReady(false);
+      }
+    } catch (error) {
+      console.log("Camera capture error:", error);
+      Alert.alert("Error", "Unable to take a photo.");
+    } finally {
+      setCapturing(false);
+    }
+  }
+
+  // Close the camera
+  function closeCamera() {
+    setShowCamera(false);
+    setIsCameraReady(false);
+  }
+
+  // Show photo source options
+  function showPhotoOptions() {
+    setShowPhotoMenu(true);
+  }
+
+  // Save memory details to Firestore
+  async function handleSaveMemory() {
+    if (loading || initializing) return;
+
+    if (!imageUri || !caption.trim() || !location.trim()) {
+      Alert.alert(
+        "Missing Information",
+        "Please add a photo, caption and location.",
+      );
+      return;
+    }
+
+    let newSavedImageUri = null;
+    let memorySaved = false;
+
+    try {
+      setLoading(true);
+
+      // Only copy an image if creating a new memory or replacing the image while editing
+      const imageChanged = !isEditing || imageUri !== originalImageUri;
+
+      let finalImageUri = imageUri;
+
+      if (imageChanged) {
+        await FileSystem.makeDirectoryAsync(MEMORY_FOLDER, {
+          intermediates: true,
+        });
+
+        const fileName = `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2, 8)}-memory.jpg`;
+
+        newSavedImageUri = `${MEMORY_FOLDER}${fileName}`;
+
+        await FileSystem.copyAsync({
+          from: imageUri,
+          to: newSavedImageUri,
+        });
+
+        finalImageUri = newSavedImageUri;
+      }
+
+      // Same data structure for both Create and Edit
+      const memoryData = {
+        imageUri: finalImageUri,
+        caption: caption.trim(),
+        location: location.trim(),
+        date,
+      };
+
+      // Choose between updating and creating
+      if (isEditing) {
+        await updateMemory(memoryId, memoryData);
+        console.log("Memory updated:", memoryId);
+      } else {
+        const newMemoryId = await saveMemory(memoryData);
+        console.log("Memory created:", newMemoryId);
+      }
+
+      memorySaved = true;
+
+      navigation.goBack();
+    } catch (error) {
+      console.log("Save memory error:", error);
+
+      // Remove a newly created memory copy if Firestore saving fails
+      if (newSavedImageUri && !memorySaved) {
+        try {
+          await FileSystem.deleteAsync(newSavedImageUri, {
+            idempotent: true,
+          });
+        } catch (cleanupError) {
+          console.log("Cleanup error:", cleanupError);
+        }
+      }
+
+      Alert.alert("Error", error.message || "Unable to save your memory.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Display a loading screen while retrieving an existing memory
+  if (initializing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#8F9E42" />
+        <Text style={styles.loadingText}>Loading memory...</Text>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={() => navigation.goBack()} />
-      {loading ? (
-        <ActivityIndicator size="large" color="#D4D88E" />
-      ) : !memory ? (
-        <View style={styles.memoryCard}>
-          <Text style={styles.emptyText}>No memories found.</Text>
-          <Pressable onPress={() => navigation.goBack()}>
-            <Text style={styles.closeText}>Close</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.memoryCard}>
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <View style={styles.dateHeader}>
-              <Pressable
-                disabled={currentIndex === 0}
-                onPress={() => changeMemory(-1)}
-              >
-                <Ionicons
-                  name="chevron-back"
-                  size={23}
-                  color={currentIndex === 0 ? "#CCC" : "#333"}
-                />
-              </Pressable>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Back button */}
+        <Pressable
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={19} color="#333" />
+          <Text style={styles.backText}>Back</Text>
+        </Pressable>
 
-              <Text style={styles.dateText}>{formatDisplayDate(date)}</Text>
+        {/* Screen title */}
+        <Text style={styles.title}>
+          {isEditing ? "Edit Memory" : "Create Memory"}
+        </Text>
 
-              <Pressable
-                disabled={currentIndex === memories.length - 1 || deleting}
-                onPress={() => changeMemory(1)}
-              >
-                <Ionicons
-                  name="chevron-forward"
-                  size={23}
-                  color={currentIndex === memories.length - 1 ? "#CCC" : "#333"}
-                />
-              </Pressable>
-            </View>
-
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={20} color="#333" />
-
-              <Text style={styles.locationText}>{memory.location}</Text>
-            </View>
-
+        {/* Photo preview */}
+        <Pressable
+          style={styles.imageBox}
+          onPress={showPhotoOptions}
+          disabled={loading}
+        >
+          {imageUri ? (
             <Image
-              source={{ uri: memory.imageUri }}
-              style={styles.memoryImage}
+              source={{ uri: imageUri }}
+              style={styles.selectedImage}
               resizeMode="cover"
             />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Ionicons name="image" size={43} color="#333" />
 
-            <Text style={styles.caption}>{memory.caption}</Text>
+              <Text style={styles.imageText}>
+                Add your furry friend's photos
+              </Text>
 
-            <View style={styles.pagination}>
-              {memories.map((item, index) => (
-                <View
-                  key={item.id}
-                  style={[
-                    styles.dot,
-                    index === currentIndex && styles.activeDot,
-                  ]}
-                />
-              ))}
+              <Text style={styles.imageHint}>
+                Tap to open Camera or Gallery
+              </Text>
             </View>
-            <View style={styles.actionButtons}>
-              <Pressable
-                style={styles.editButton}
-                onPress={handleEditMemory}
-                disabled={deleting}
-              >
-                <Ionicons name="create-outline" size={18} color="#333" />
-                <Text style={styles.actionText}>Edit Memory</Text>
-              </Pressable>
+          )}
+        </Pressable>
 
-              <Pressable
-                style={styles.deleteButton}
-                onPress={handleDeleteMemory}
-                disabled={deleting}
-              >
-                <Ionicons name="trash-outline" size={18} color="#B94343" />
-                <Text style={styles.deleteText}>
-                  {deleting ? "Deleting..." : "Delete Memory"}
-                </Text>
-              </Pressable>
+        {/* Caption input */}
+        <TextInput
+          style={styles.input}
+          placeholder="Add a caption..."
+          placeholderTextColor="#5E5E5E"
+          value={caption}
+          onChangeText={setCaption}
+          multiline
+        />
+
+        {/* Location input */}
+        <Pressable
+          style={styles.locationRow}
+          onPress={openLocationPicker}
+          disabled={loading}
+          accessibilityRole="button"
+          accessibilityLabel="Choose memory location"
+        >
+          <Ionicons name="location-sharp" size={20} color="#222" />
+
+          <Text
+            style={[
+              styles.locationInput,
+              !location && styles.locationPlaceholder,
+            ]}
+          >
+            {location || "Add Location"}
+          </Text>
+
+          <Ionicons name="chevron-forward" size={18} color="#333" />
+        </Pressable>
+
+        {/* Date selection */}
+        <View style={styles.dateContainer}>
+          <View style={styles.dateHeader}>
+            <Text style={styles.dateLabel}>Date</Text>
+
+            <View style={styles.datePill}>
+              <Text style={styles.datePillText}>{formatDisplayDate(date)}</Text>
             </View>
-          </ScrollView>
+          </View>
+
+          <MonthCalendar selectedDate={date} onSelectDate={setDate} compact />
         </View>
+
+        {/* Save / Discard buttons */}
+        <View style={styles.buttonContainer}>
+          <Pressable
+            style={styles.saveButton}
+            onPress={handleSaveMemory}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {loading
+                ? "SAVING..."
+                : isEditing
+                  ? "Save Changes"
+                  : "Save Memory"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={styles.discardButton}
+            onPress={() => navigation.goBack()}
+            disabled={loading}
+          >
+            <Text style={styles.buttonText}>
+              {isEditing ? "Cancel" : "Discard"}
+            </Text>
+          </Pressable>
+        </View>
+      </ScrollView>
+
+      {/* LocationPicker modal */}
+      {showLocationPicker && (
+        <LocationPicker
+          visible={showLocationPicker}
+          onClose={() => setShowLocationPicker(false)}
+          onSelectLocation={setLocation}
+        />
       )}
-    </View>
+
+      {/*Photo source menu */}
+      <Modal
+        visible={showPhotoMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPhotoMenu(false)}
+      >
+        <View style={styles.overlay}>
+          <View style={styles.dialog}>
+            <Text style={styles.dialogTitle}>
+              {isEditing ? "Change Photo" : "Add Photo"}
+            </Text>
+
+            {/* Camera option */}
+            <Pressable
+              style={styles.optionRow}
+              onPress={() => {
+                setShowPhotoMenu(false);
+                openCamera();
+              }}
+            >
+              <Ionicons name="camera-outline" size={22} color="#222" />
+              <Text style={styles.optionText}>Take Photo</Text>
+            </Pressable>
+
+            {/* Phone photo library */}
+            <Pressable
+              style={styles.optionRow}
+              onPress={() => {
+                setShowPhotoMenu(false);
+                pickImage();
+              }}
+            >
+              <Ionicons name="images-outline" size={22} color="#222" />
+              <Text style={styles.optionText}>Phone Photo Library</Text>
+            </Pressable>
+
+            {/* PawPath Gallery */}
+            <Pressable style={styles.optionRow} onPress={openAppGallery}>
+              <Ionicons name="albums-outline" size={22} color="#222" />
+              <Text style={styles.optionText}>PawPath Gallery</Text>
+            </Pressable>
+
+            {/* Cancel */}
+            <Pressable
+              style={styles.cancelOption}
+              onPress={() => setShowPhotoMenu(false)}
+            >
+              <Text style={styles.optionText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PawPath Gallery based on lecture demo */}
+      <Modal
+        visible={showAppGallery}
+        animationType="slide"
+        onRequestClose={() => setShowAppGallery(false)}
+      >
+        <View style={styles.galleryContainer}>
+          {/* Gallery header */}
+          <View style={styles.galleryHeader}>
+            <Text style={styles.galleryTitle}>PawPath Gallery</Text>
+
+            <Pressable onPress={() => setShowAppGallery(false)}>
+              <Ionicons name="close" size={27} color="#222" />
+            </Pressable>
+          </View>
+
+          {/* Conditional rendering from lecture demo */}
+          {galleryLoading ? (
+            <Text style={styles.galleryMessage}>Loading photos...</Text>
+          ) : galleryPhotos.length === 0 ? (
+            <View style={styles.emptyGallery}>
+              <Ionicons name="images-outline" size={45} color="#777" />
+
+              <Text style={styles.galleryMessage}>
+                No photos yet. Take a photo using PawPath Camera!
+              </Text>
+            </View>
+          ) : (
+            <ScrollView contentContainerStyle={styles.galleryGrid}>
+              {/* .map() approach from lecture demo */}
+              {galleryPhotos.map((uri) => (
+                <Pressable
+                  key={uri}
+                  style={styles.galleryCell}
+                  onPress={() => selectAppPhoto(uri)}
+                >
+                  <Image source={{ uri }} style={styles.galleryImage} />
+                </Pressable>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
+
+      {/* In-app camera modal */}
+      <Modal
+        visible={showCamera}
+        animationType="slide"
+        onRequestClose={closeCamera}
+      >
+        <View style={styles.cameraContainer}>
+          {showCamera && permission?.granted && (
+            <CameraView
+              style={StyleSheet.absoluteFill}
+              facing={facing}
+              ref={cameraRef}
+              onCameraReady={() => setIsCameraReady(true)}
+            />
+          )}
+
+          {/* Close camera */}
+          <Pressable
+            style={styles.closeCameraButton}
+            onPress={closeCamera}
+            disabled={capturing}
+          >
+            <Ionicons name="close" size={28} color="#FFF" />
+          </Pressable>
+
+          {/* Camera controls */}
+          <View style={styles.cameraControls}>
+            <View style={styles.cameraSideControl} />
+
+            {/* Capture button */}
+            <Pressable
+              style={[
+                styles.snapButton,
+                (!isCameraReady || capturing) && {
+                  opacity: 0.5,
+                },
+              ]}
+              onPress={takePhoto}
+              disabled={!isCameraReady || capturing}
+            >
+              <View style={styles.snapInnerCircle} />
+            </Pressable>
+
+            {/* Flip camera */}
+            <Pressable
+              style={styles.cameraSideControl}
+              onPress={toggleCamera}
+              disabled={capturing}
+            >
+              <Ionicons name="camera-reverse-outline" size={30} color="#FFF" />
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 22,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.6)",
-  },
-  memoryCard: {
-    width: "100%",
-    maxHeight: "85%",
     backgroundColor: "#FEFCFA",
-    borderRadius: 18,
-    padding: 25,
   },
-  dateHeader: {
-    flexDirection: "row",
+  // Loading state for Edit mode
+  loadingContainer: {
+    flex: 1,
+    backgroundColor: "#FEFCFA",
     justifyContent: "center",
     alignItems: "center",
-    gap: 18,
-    marginBottom: 30,
+    gap: 12,
   },
-  dateText: {
-    fontFamily: "PawPath-Medium",
+  loadingText: {
+    fontFamily: "PawPath-Regular",
     fontSize: 14,
-    color: "#333",
+    color: "#555",
   },
-  locationRow: {
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: 25,
+    paddingTop: 85,
+    paddingBottom: 35,
+  },
+
+  backButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    marginBottom: 15,
+    alignSelf: "flex-start",
+    marginBottom: 20,
   },
-  locationText: {
+
+  backText: {
     fontFamily: "PawPath-Regular",
-    fontSize: 16,
+    fontSize: 13,
+    color: "#222",
   },
-  memoryImage: {
-    width: "100%",
-    height: 340,
-    borderRadius: 10,
-  },
-  caption: {
-    fontFamily: "PawPath-Regular",
-    fontSize: 15,
-    marginTop: 12,
-    marginBottom: 45,
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 7,
-    marginBottom: 5,
-  },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: "#DDD",
-  },
-  activeDot: {
-    backgroundColor: "#D4D88E",
-  },
-  emptyText: {
-    fontFamily: "PawPath-Regular",
-    fontSize: 15,
-    textAlign: "center",
-  },
-  closeText: {
+
+  title: {
     fontFamily: "PawPath-SemiBold",
-    color: "#8F9E42",
+    fontSize: 23,
+    color: "#222",
     textAlign: "center",
-    marginTop: 20,
-  },
-  // Container for Edit and Delete buttons
-  actionButtons: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 25,
+    marginBottom: 20,
   },
 
-  // Edit button
-  editButton: {
+  imageBox: {
+    height: 270,
+    borderWidth: 2,
+    borderColor: "#CFE5FD",
+    borderStyle: "dashed",
+    borderRadius: 10,
+    overflow: "hidden",
+    marginBottom: 25,
+  },
+
+  selectedImage: {
+    width: "100%",
+    height: "100%",
+  },
+
+  imagePlaceholder: {
     flex: 1,
-    backgroundColor: "#D4D88E",
-    borderRadius: 8,
-    paddingVertical: 12,
-    flexDirection: "row",
-    justifyContent: "center",
     alignItems: "center",
-    gap: 6,
+    justifyContent: "center",
+    gap: 12,
   },
 
-  // Delete button
-  deleteButton: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderColor: "#B94343",
-    borderRadius: 8,
-    paddingVertical: 12,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 6,
-  },
-
-  // Edit button text
-  actionText: {
-    fontFamily: "PawPath-Medium",
-    fontSize: 12,
+  imageText: {
+    fontFamily: "PawPath-Regular",
+    fontSize: 13,
     color: "#333",
   },
 
-  // Delete button text
-  deleteText: {
+  imageHint: {
+    fontFamily: "PawPath-Regular",
+    fontSize: 11,
+    color: "#777",
+  },
+
+  input: {
+    backgroundColor: "#CFE5FD",
+    borderRadius: 8,
+    padding: 15,
+    minHeight: 48,
+    fontFamily: "PawPath-Regular",
+    fontSize: 14,
+    marginBottom: 15,
+    justifyContent: "center",
+    textAlignVertical: "center",
+  },
+
+  locationRow: {
+    backgroundColor: "#CFE5FD",
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 15,
+  },
+
+  locationInput: {
+    flex: 1,
+    fontFamily: "PawPath-Regular",
+    fontSize: 14,
+    color: "#222",
+    paddingVertical: 12,
+  },
+
+  locationPlaceholder: {
+    color: "#5E5E5E",
+  },
+
+  dateContainer: {
+    backgroundColor: "#CFE5FD",
+    borderRadius: 10,
+    padding: 12,
+  },
+
+  dateHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  dateLabel: {
     fontFamily: "PawPath-Medium",
+    fontSize: 14,
+  },
+
+  datePill: {
+    backgroundColor: "#FEFCFA",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+
+  datePillText: {
+    fontFamily: "PawPath-Regular",
     fontSize: 12,
-    color: "#B94343",
+  },
+
+  buttonContainer: {
+    marginTop: 70,
+    gap: 12,
+  },
+
+  saveButton: {
+    backgroundColor: "#D4D88E",
+    borderRadius: 10,
+    padding: 15,
+    alignItems: "center",
+  },
+
+  discardButton: {
+    borderWidth: 2,
+    borderColor: "#D4D88E",
+    borderRadius: 10,
+    padding: 15,
+    alignItems: "center",
+  },
+
+  buttonText: {
+    fontFamily: "PawPath-SemiBold",
+    fontSize: 15,
+    color: "#222",
+  },
+
+  // Photo source menu styles
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    paddingHorizontal: 25,
+  },
+
+  dialog: {
+    backgroundColor: "#FEFCFA",
+    borderRadius: 14,
+    padding: 20,
+  },
+
+  dialogTitle: {
+    fontFamily: "PawPath-SemiBold",
+    fontSize: 19,
+    marginBottom: 12,
+    color: "#222",
+  },
+
+  optionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EAEAEA",
+  },
+
+  optionText: {
+    fontFamily: "PawPath-Regular",
+    fontSize: 14,
+    color: "#222",
+  },
+
+  cancelOption: {
+    alignItems: "center",
+    paddingTop: 18,
+  },
+
+  // PawPath Gallery styles
+  galleryContainer: {
+    flex: 1,
+    backgroundColor: "#FEFCFA",
+    paddingTop: 55,
+  },
+
+  galleryHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 22,
+    paddingBottom: 18,
+  },
+
+  galleryTitle: {
+    fontFamily: "PawPath-SemiBold",
+    fontSize: 22,
+    color: "#222",
+  },
+
+  // Grid layout adapted from lecture demo
+  galleryGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 10,
+    justifyContent: "flex-start",
+  },
+
+  galleryCell: {
+    width: "33.33%",
+    padding: 5,
+    aspectRatio: 3 / 4,
+  },
+
+  galleryImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 8,
+    backgroundColor: "#ccc",
+  },
+
+  emptyGallery: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+
+  galleryMessage: {
+    fontFamily: "PawPath-Regular",
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 15,
+  },
+
+  // Camera styles
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+
+  closeCameraButton: {
+    position: "absolute",
+    top: 60,
+    right: 25,
+    padding: 10,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 25,
+    zIndex: 10,
+  },
+
+  cameraControls: {
+    position: "absolute",
+    bottom: 45,
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 30,
+    zIndex: 10,
+  },
+
+  cameraSideControl: {
+    width: 55,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  snapButton: {
+    width: 75,
+    height: 75,
+    borderRadius: 40,
+    borderWidth: 4,
+    borderColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  snapInnerCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 30,
+    backgroundColor: "#FFF",
   },
 });
